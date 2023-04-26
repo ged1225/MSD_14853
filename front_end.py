@@ -42,39 +42,84 @@ class Application(tk.Tk):
         menu_bar.add_command(label="Settings", command=settings_window)
         self.config(menu=menu_bar)
 
-        frame = Menu(container, self)
+        frame = MainFrame(container, self)
         frame.grid(row=0, column=0, sticky='nsew')
         frame.tkraise()
 
 
-class Menu(tk.Frame):
+class MainFrame(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
 
-        # declare widgets
+        # >>>>>>>>>>>>> Declare <<<<<<<<<<<<<<
+        # title
         greeting = tk.Label(self, text='Ossilla Enviornnmental Control', font='LARGEFONT')
-        label_frame = tk.LabelFrame(self, text="Readings", )
-        rh_label = tk.Label(label_frame, text="ToDo")
         
-        # dehumidifcation button
+        # labelframe
+        label_frame = tk.LabelFrame(self, text="Readings")
+
+        # rh in Lableframe
+        rh_data_var = tk.StringVar(value="--%")
+        rh_label = tk.Label(label_frame, text="Relative Humidity")
+        rh_data = tk.Label(label_frame, textvariable=rh_data_var)
+
+        # temp in Labelframe
+        temp_label = tk.Label(label_frame, text="Temperature")
+        temp_data_var = tk.StringVar(value="--°C")
+        temp_data = tk.Label(label_frame, textvariable=temp_data_var)
+        
+        # start button
         dehumidify_button_tvar = tk.StringVar(value=back_end.DHUMID_IDLE)
-        dehumidify_button = tk.Button(self, textvariable=dehumidify_button_tvar, command= lambda: back_end.dehumidifcation_button(tvar=dehumidify_button_tvar, button=dehumidify_button))
+        dehumidify_button = tk.Button(self, 
+                                    textvariable=dehumidify_button_tvar, 
+                                    command= lambda: back_end.dehumidifcation_button(tvar=dehumidify_button_tvar, button=dehumidify_button))
 
-        # record data button
+        # record button
         record_button_tvar = tk.StringVar(value=back_end.RECORD_IDLE)
-        record_button = tk.Button(self, textvariable=record_button_tvar, command= lambda: back_end.record_button(tvar=record_button_tvar, button=record_button))
+        record_button = tk.Button(self, 
+                                textvariable=record_button_tvar, 
+                                command= lambda: back_end.record_button(tvar=record_button_tvar, button=record_button))
 
-        # Export data button
+        # Export button
         export_button_tvar = tk.StringVar(value=back_end.EXPORT_IDLE)
-        export_button = tk.Button(self, textvariable=export_button_tvar, command= lambda: back_end.export_button(tvar=export_button_tvar, button=export_button))
+        export_button = tk.Button(self, 
+                                textvariable=export_button_tvar, 
+                                command= lambda: back_end.export_button(tvar=export_button_tvar, button=export_button))
 
-        #place widgets
+        # Message box
+        message_box = tk.Text(self, height=5, width=50)
+        # use -> message_box.insert(tk.End, <string>)
+
+        # >>>>>>>>>>>>> Pack <<<<<<<<<<<<<<
+        '''
+        ._______________________________________________________.
+        |   .____________________.      |       _____________   |
+        |   |                    |      |  ____/                |
+        |   |     Data Display   |      | /     <RH Graph>      |
+        |   |____________________|      |/                      |
+        |                               |_____________________  |
+        |     >>  Start Button <<                               |
+        |                               .____________________.  |
+        |     >> Record Button <<       |   Message Box      |  |
+        |                               |                    |  |
+        |     >> Export Button <<       |____________________|  |
+        |_______________________________________________________|
+        '''
+        #pack labelframe
         rh_label.pack(fill="both", expand="yes")
+
+        # pack window
         greeting.grid(row=0, column=0, padx=PADX, pady=PADY)
         label_frame.grid(row=1, column=0, padx=PADX, pady=PADY, sticky="ew")
         dehumidify_button.grid(row=2, column=0, padx=PADX, pady=PADY, sticky='ew')
         record_button.grid(row=3, column=0, padx=PADX, pady=PADY, sticky='ew')
         export_button.grid(row=4, column=0, padx=PADX, pady=PADY, sticky="ew")
+
+    def update_messages():
+        pass
+
+    def update_data_read():
+        pass
 
 def settings_window():
     window = tk.Toplevel()
