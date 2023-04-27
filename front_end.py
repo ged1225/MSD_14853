@@ -38,6 +38,11 @@ TITLE_FONT_SIZE = 36
 DATA_FONT_SIZE = 18
 
 
+'''
+@Description:
+@Params:
+@Author: Gabriel Dombrowski (ged1225@g.rit.edu)
+'''
 class Application(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
@@ -54,7 +59,17 @@ class Application(tk.Tk):
         frame.tkraise()
 
 
+'''
+@Description:
+@Params:
+@Author: Gabriel Dombrowski (ged1225@g.rit.edu)
+'''
 class MainFrame(tk.Frame):
+    '''
+    @Description:
+    @Params:
+    @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
+    '''
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
 
@@ -93,19 +108,23 @@ class MainFrame(tk.Frame):
         self.dehumidify_button_tvar = tk.StringVar(value="START/STOP")
         self.dehumidify_button = tk.Button(self.button_frame, height=BUTTON_HEIGHT, font=('Times', BUTTON_FONT_SIZE),
                                     textvariable=self.dehumidify_button_tvar,  
-                                    command= lambda: back_end.dehumidifcation_button(tvar=self.dehumidify_button_tvar, button=self.dehumidify_button))
+                                    command= lambda: back_end.dehumidifcation_button(tvar=self.dehumidify_button_tvar, 
+                                                                    button=self.dehumidify_button))
 
         # record button in button frame
         self.record_button_tvar = tk.StringVar(value="RECORD")
         self.record_button = tk.Button(self.button_frame, height=BUTTON_HEIGHT, font=('Times', BUTTON_FONT_SIZE),
                                 textvariable=self.record_button_tvar,  
-                                command= lambda: back_end.record_button(tvar=self.record_button_tvar, button=self.record_button))
+                                command= lambda: back_end.record_button(tvar=self.record_button_tvar, 
+                                                                    button=self.record_button))
 
         # Export button in button frame
         self.export_button_tvar = tk.StringVar(value="EXPORT")
         self.export_button = tk.Button(self.button_frame, height=BUTTON_HEIGHT, font=('Times', BUTTON_FONT_SIZE),
                                 textvariable=self.export_button_tvar, 
-                                command= lambda: back_end.export_button(tvar=self.export_button_tvar, button=self.export_button))
+                                command= lambda: back_end.export_button(tvar=self.export_button_tvar, 
+                                                                    button=self.export_button, 
+                                                                    frame=self))
         
         # message label frame
         self.message_frame = tk.LabelFrame(graph_frame, text="Messages from the system", font=('Times', DATA_FONT_SIZE))
@@ -160,13 +179,28 @@ class MainFrame(tk.Frame):
         # set graph to animate
         self.ani = animation.FuncAnimation(self.fig, self.animate, np.arange(1, 200), interval=25, blit=False)
 
+    '''
+    @Description:
+    @Params:
+    @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
+    '''
     def update_messages(self, message):
         self.message_box.insert('1.0', ("(" + str(self.message_counter) +"): "+ message + "\n"))
         self.message_counter += 1
-
+    
+    '''
+    @Description:
+    @Params:
+    @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
+    '''
     def update_data_read(self):
         pass
-
+    
+    '''
+    @Description:
+    @Params:
+    @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
+    '''
     def animate(self,i):
         # read data from RH out and round to 2 digits
         rhData = round(back_end.get_sht30(back_end.SHT30_PROBE_0, back_end.SHT30_RH), 2)
@@ -195,7 +229,11 @@ class MainFrame(tk.Frame):
         #self.line.set_ydata(self.A*np.sin(self.x+self.v*i))  # update the data
         #return self.line
 
-# main function
+'''
+@Description:
+@Params:
+@Author: Gabriel Dombrowski (ged1225@g.rit.edu)
+'''
 def main(inputs_dict, main_log):
     main_log.info('entering main function')
     main_log.debug('inputs dictionary ->', inputs_dict)

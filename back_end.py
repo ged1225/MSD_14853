@@ -65,7 +65,7 @@ class MCP3008:
 @Params:
 @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
 '''
-def export_button(tvar: tk.StringVar, button: tk.Button):
+def export_button(tvar: tk.StringVar, button: tk.Button, frame):
     if tvar.get() == EXPORT_IDLE:
         # set the button label to active
         tvar.set(EXPORT_ACTIVE)
@@ -77,6 +77,11 @@ def export_button(tvar: tk.StringVar, button: tk.Button):
 
         # wait for 1 second -- todo add functionnality here
         time.sleep(5)
+        if usb_availiable():
+            export_thread = threading.Thread(target=record_thread)
+            export_thread.join()
+        else:
+            frame.update_messages(message="Can't Export: Couldn't find a USB drive")
 
         # reset the button label
         tvar.set(EXPORT_IDLE)
@@ -234,10 +239,12 @@ def record_thread():
 
     with CSV_ROWS_LOCK:
         while getattr(t, "do_run", True):
-            CSV_ROWS += [
-                (time.time()-start_time), 
-                get_sht30(SHT30_PROBE_1, SHT30_RH),
-                get_sht30(SHT30_PROBE_1, SHT30_TC)]
+            # populate a new data point for the CSV file
+            CSV_ROWS.append([
+                        (time.time()-start_time), 
+                        get_sht30(SHT30_PROBE_1, SHT30_RH),
+                        get_sht30(SHT30_PROBE_1, SHT30_TC)])
+            # wait one second
             time.sleep(1)
 
 
@@ -248,3 +255,11 @@ def record_thread():
 '''
 def export_thread():
     pass
+
+'''
+@Description:
+@Params:
+@Author: Gabriel Dombrowski (ged1225@g.rit.edu)
+'''
+def usb_availiable():
+    return False
