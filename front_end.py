@@ -130,7 +130,7 @@ class MainFrame(tk.Frame):
         self.dehumidify_button = tk.Button(self.button_frame, height=BUTTON_HEIGHT, font=('Times', BUTTON_FONT_SIZE),
                                     textvariable=self.dehumidify_button_tvar,  
                                     command= lambda: back_end.dehumidifcation_button(tvar=self.dehumidify_button_tvar, 
-                                                                    button=self.dehumidify_button))
+                                                                    frame=self))
 
         # record button in button frame
         self.record_button_tvar = tk.StringVar(value=back_end.RECORD_IDLE)

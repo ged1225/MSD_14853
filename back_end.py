@@ -101,13 +101,32 @@ def export_button(tvar: tk.StringVar, button: tk.Button, frame):
 @Params:
 @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
 '''
-def dehumidifcation_button(tvar: tk.StringVar, button: tk.Button):
+def dehumidifcation_button(tvar: tk.StringVar, frame: tk.Frame):
     if tvar.get() == DHUMID_ACTIVE:
         tvar.set(DHUMID_IDLE)
-        print("Dehumidification complete...")
-    else:
+        set_relay(RELAY_OFF)
+        frame.update_messages("Dehumidification complete (relay 0 deactivated)")
+    elif tvar.get() == DHUMID_IDLE:
         tvar.set(DHUMID_ACTIVE)
-        print("Dehumidifying...")
+        set_relay(RELAY_ON)
+        frame.update_messages("Beginning dehumidification (relay 0 deactivated)")
+
+'''
+@Description:
+@Params:
+@Author: Gabriel Dombrowski (ged1225@g.rit.edu)
+'''
+def set_relay(mode: int):
+    bus = smbus.SMBus(RELAY_BUS)
+    if mode == RELAY_OFF:
+        #off
+        bus.write_byte_data(RELAY_ADDR, 1, RELAY_OFF)
+    elif mode == RELAY_ON:
+        #on
+        bus.write_byte_data(RELAY_ADDR, 1, RELAY_ON)
+    else:
+        #error
+        pass
 
 
 '''
