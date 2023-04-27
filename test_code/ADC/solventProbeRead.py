@@ -23,7 +23,7 @@ class MCP3008:
 def main():
     adc = MCP3008()
 
-    value = adc.read( channel = 0)#0 for solvent %, 2 for temperature
+    value = adc.read( channel = 2)#0 for solvent %, 2 for temperature
 
     print("Applied voltage: %.2f" % (value/ 1023.0 * 3.3))
 

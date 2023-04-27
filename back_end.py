@@ -8,14 +8,14 @@ import csv
 import threading
 
 # display strings
-RECORD_IDLE = "Begin Recording"
-RECORD_ACTIVE = "End Recording"
-DHUMID_IDLE = "Begin Dehumidification Process"
-DHUMID_ACTIVE = "End Dehumidification Process"
-EXPORT_IDLE = "Export to CSV"
+RECORD_IDLE = "Record"
+RECORD_ACTIVE = "Recording..."
+DHUMID_IDLE = "Start"
+DHUMID_ACTIVE = "Stop"
+EXPORT_IDLE = "Export"
 EXPORT_ACTIVE = "Exporting..."
-TEMP_SUFFIX = "%"
-RH_SUFFIX = "°C"
+RH_SUFFIX = "%"
+TEMP_SUFFIX = "°C"
 
 #export data stuff
 CSV_FIELDS = ['Time', 'RH', 'Temp. (C)']
@@ -26,7 +26,7 @@ RECORDING_THREAD = None
 
 #rh probe stuff
 SHT30_PROBE_0 = 1
-SHT30_PROBE_1 = 2
+SHT30_PROBE_1 = 0
 SHT30_RH = 0
 SHT30_TF = 1
 SHT30_TC = 2
@@ -164,7 +164,7 @@ def get_sht30(probe, data_type):
     bus.write_i2c_block_data(0x44, 0x2C, [0x06])
 
     # wait for data to be recorded
-    time.sleep(0.5)
+    time.sleep(1)
 
     # read data that was recorded
     data = bus.read_i2c_block_data(0x44, 0x00, 6)
