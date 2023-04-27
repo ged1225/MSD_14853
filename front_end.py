@@ -82,7 +82,10 @@ class MainFrame(tk.Frame):
     '''
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
-        self.controller = controller
+        
+        #threading
+        #self.update_thread = threading.Thread(target=self.update_data_read)
+        #self.update_thread.start()
 
         # >>>>>>>>>>>>> Declarations <<<<<<<<<<<<<<
         # title
@@ -194,13 +197,11 @@ class MainFrame(tk.Frame):
         # set graph to animate
         self.ani = animation.FuncAnimation(self.fig, self.animate, np.arange(1, 200), interval=25, blit=False)
 
-        #threading
-        self.update_thread = threading.Thread(target=self.update_data_read)
-        self.update_thread.start()
+        
 
     '''
     @Description:
-    @Params:
+    @Params:  
     @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
     '''
     def update_messages(self, message):
@@ -212,37 +213,18 @@ class MainFrame(tk.Frame):
     @Params:
     @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
     '''
-    def update_data_read(self):
-        global RH_0
-        global RH_1
-        global TEMP
-
-        with RH_LOCK:
-            RH_0 = round(back_end.get_sht30(back_end.SHT30_PROBE_0, back_end.SHT30_RH), 3)
-            RH_1 = round(back_end.get_sht30(back_end.SHT30_PROBE_1, back_end.SHT30_RH), 3)
-            self.rh_data_var.set(str(RH_0) + back_end.RH_SUFFIX)
-        
-        with TEMP_LOCK:
-            TEMP = round(back_end.get_sht30(back_end.SHT30_PROBE_0, back_end.SHT30_TC), 3)
-            self.temp_data_var.set(str(TEMP) + back_end.TEMP_SUFFIX)
-
-        time.sleep(1)
-    
-    '''
-    @Description:
-    @Params:
-    @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
-    '''
     def animate(self,i):
-        global RH_0
-        global RH_1
 
-        # read data from RH out and round to 2 digits
-        with RH_LOCK:
-            self.rh_out.append(RH_0)
-            self.rh_in.append(RH_1)
-        
+        self.rh_data_out = round(back_end.get_sht30(back_end.SHT30_PROBE_0, back_end.SHT30_RH), 2)
+        self.rh_data_in = round(back_end.get_sht30(back_end.SHT30_PROBE_1, back_end.SHT30_RH), 2)
+        self.temp_data = round(back_end.get_sht30(back_end.SHT30_PROBE_0, back_end.SHT30_TC), 2)
+        self.rh_data_var.set(str(self.rh_data_out) + back_end.RH_SUFFIX)
+        self.temp_data_var.set(str(self.temp_data) + back_end.TEMP_SUFFIX)
        
+        self.rh_out.append(self.rh_data_out)
+        self.rh_in.append(self.rh_data_in)
+
+
         # read data from RH in and round to 2 digits        
         self.rh_out = self.rh_out[-20:]
         self.rh_in = self.rh_in[-20:]
