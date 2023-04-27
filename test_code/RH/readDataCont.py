@@ -12,7 +12,7 @@ def main():
 		# Get I2C bus
 		# bus 1 for relays and first RH probe
 		# bus 0 for second rh probe
-		bus = smbus.SMBus(0)
+		bus = smbus.SMBus(1)
 
 		# SHT30 address, 0x44(68)
 		# Send measurement command, 0x2C(44)

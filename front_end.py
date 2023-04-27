@@ -11,9 +11,11 @@ from matplotlib.backends.backend_tkagg import (
 from matplotlib.backend_bases import key_press_handler
 from matplotlib import pyplot as plt, animation
 import numpy as np
+import time
+import threading
 
 # Program name global strings
-PROGRAM_NAME = 'EnviornmentalControl'
+PROGRAM_NAME = 'Ossila Enviornmental Control'
 PROGRAM_FILE_NAME = PROGRAM_NAME + '.py'
 LOG_NAME = PROGRAM_NAME + '_log'
 
@@ -31,11 +33,17 @@ SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
 BUTTON_HEIGHT = 2
 MESSAGE_BOX_HEIGHT=10
-MESSAGE_BOX_WIDTH=85
+MESSAGE_BOX_WIDTH=70
 
 BUTTON_FONT_SIZE = 24
-TITLE_FONT_SIZE = 36
+TITLE_FONT_SIZE = 32
 DATA_FONT_SIZE = 18
+
+RH_0 = 0.0
+RH_1 = 0.0
+RH_LOCK = threading.Lock()
+TEMP = 0
+TEMP_LOCK = threading.Lock()
 
 
 '''
@@ -58,6 +66,8 @@ class Application(tk.Tk):
         frame.grid(row=0, column=0, sticky='nsew')
         frame.tkraise()
 
+        #frame.update_data_read()
+
 
 '''
 @Description:
@@ -72,6 +82,7 @@ class MainFrame(tk.Frame):
     '''
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+        self.controller = controller
 
         # >>>>>>>>>>>>> Declarations <<<<<<<<<<<<<<
         # title
@@ -82,17 +93,22 @@ class MainFrame(tk.Frame):
 
         # declare graph stuff
         # used for animation
-        self.v = 1.0
-        self.A = 1.0
-        self.xs = []
-        self.rh_out = []
-        self.rh_in = []
         graph_frame = tk.LabelFrame(self, text="Relative Humidity", font=('Times', DATA_FONT_SIZE))
-        self.fig = plt.Figure(figsize=(6, 2))
-        self.x = 20*np.arange(0, 2*np.pi, 0.01)        # x-array
-        self.ax = self.fig.add_subplot(111)
-        self.line, = self.ax.plot(self.x, np.sin(self.x))        
+
+        self.xs = [] # time axis
+        self.rh_out = [] # data plot #1
+        self.rh_in = [] # data plot #2
+        self.fig = plt.Figure(figsize=(6, 2)) # declare figure
+        # self.x = 20*np.arange(0, 2*np.pi, 0.01)        # x-array
+        self.ax = self.fig.add_subplot(111)   # declare a subplot
+        # self.line, = self.ax.plot(self.x, np.sin(self.x))        
         self.canvas = FigureCanvasTkAgg(self.fig, master=graph_frame)
+        self.start_time = time.time()
+        self.ax.set_ylabel('Relative Humidity (%)')
+        self.ax.set_xlabel('Seconds from Code Begin (s)')
+        self.ax.plot(self.xs, self.rh_in, 'r-', label='Pre-Cyld.')
+        self.ax.plot(self.xs, self.rh_out, 'b-', label='Post-Clyd.')
+        self.ax.legend()
 
         # rh in Lableframe
         self.rh_data_var = tk.StringVar(value="--%")
@@ -103,23 +119,25 @@ class MainFrame(tk.Frame):
         self.temp_label = tk.Label(self.label_frame, text="Temperature", font=('Times', DATA_FONT_SIZE))
         self.temp_data_var = tk.StringVar(value="--°C")
         self.temp_data = tk.Label(self.label_frame, textvariable=self.temp_data_var, font=('Times', BUTTON_FONT_SIZE))
-            
+        
+        self.button_frame = tk.LabelFrame(self, text='Controls', font=('Times', DATA_FONT_SIZE))
+
         # start button in button frame
-        self.dehumidify_button_tvar = tk.StringVar(value="START/STOP")
+        self.dehumidify_button_tvar = tk.StringVar(value=back_end.DHUMID_IDLE)
         self.dehumidify_button = tk.Button(self.button_frame, height=BUTTON_HEIGHT, font=('Times', BUTTON_FONT_SIZE),
                                     textvariable=self.dehumidify_button_tvar,  
                                     command= lambda: back_end.dehumidifcation_button(tvar=self.dehumidify_button_tvar, 
                                                                     button=self.dehumidify_button))
 
         # record button in button frame
-        self.record_button_tvar = tk.StringVar(value="RECORD")
+        self.record_button_tvar = tk.StringVar(value=back_end.RECORD_IDLE)
         self.record_button = tk.Button(self.button_frame, height=BUTTON_HEIGHT, font=('Times', BUTTON_FONT_SIZE),
                                 textvariable=self.record_button_tvar,  
                                 command= lambda: back_end.record_button(tvar=self.record_button_tvar, 
                                                                     button=self.record_button))
 
         # Export button in button frame
-        self.export_button_tvar = tk.StringVar(value="EXPORT")
+        self.export_button_tvar = tk.StringVar(value=back_end.EXPORT_IDLE)
         self.export_button = tk.Button(self.button_frame, height=BUTTON_HEIGHT, font=('Times', BUTTON_FONT_SIZE),
                                 textvariable=self.export_button_tvar, 
                                 command= lambda: back_end.export_button(tvar=self.export_button_tvar, 
@@ -159,9 +177,6 @@ class MainFrame(tk.Frame):
         self.dehumidify_button.pack(side='top', expand=True, fill='x', padx=PADX)
         self.record_button.pack(side='top', expand=True, fill='x', padx=PADX)
         self.export_button.pack(side='top', expand=True, fill='x', padx=PADX)
-        ''' dehumidify_button.grid(row=0, column=0, padx=PADX, pady=PADY, sticky='nsew')
-        record_button.grid(row=1, column=0, padx=PADX, pady=PADY, sticky='nsew')
-        export_button.grid(row=2, column=0, padx=PADX, pady=PADY, sticky='nsew')'''
 
         # pack message frame
         self.message_box.grid(row=0, column=0, padx=PADX, pady=PADY, sticky='nsew')
@@ -179,6 +194,10 @@ class MainFrame(tk.Frame):
         # set graph to animate
         self.ani = animation.FuncAnimation(self.fig, self.animate, np.arange(1, 200), interval=25, blit=False)
 
+        #threading
+        self.update_thread = threading.Thread(target=self.update_data_read)
+        self.update_thread.start()
+
     '''
     @Description:
     @Params:
@@ -194,7 +213,20 @@ class MainFrame(tk.Frame):
     @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
     '''
     def update_data_read(self):
-        pass
+        global RH_0
+        global RH_1
+        global TEMP
+
+        with RH_LOCK:
+            RH_0 = round(back_end.get_sht30(back_end.SHT30_PROBE_0, back_end.SHT30_RH), 3)
+            RH_1 = round(back_end.get_sht30(back_end.SHT30_PROBE_1, back_end.SHT30_RH), 3)
+            self.rh_data_var.set(str(RH_0) + back_end.RH_SUFFIX)
+        
+        with TEMP_LOCK:
+            TEMP = round(back_end.get_sht30(back_end.SHT30_PROBE_0, back_end.SHT30_TC), 3)
+            self.temp_data_var.set(str(TEMP) + back_end.TEMP_SUFFIX)
+
+        time.sleep(1)
     
     '''
     @Description:
@@ -202,32 +234,33 @@ class MainFrame(tk.Frame):
     @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
     '''
     def animate(self,i):
+        global RH_0
+        global RH_1
+
         # read data from RH out and round to 2 digits
-        rhData = round(back_end.get_sht30(back_end.SHT30_PROBE_0, back_end.SHT30_RH), 2)
-        self.rh_out.append(rhData)
-        self.rh_out = self.rh_out[-20:]
+        with RH_LOCK:
+            self.rh_out.append(RH_0)
+            self.rh_in.append(RH_1)
+        
        
-        # read data from RH in and round to 2 digits
-        rhData = round(back_end.get_sht30(back_end.SHT30_PROBE_1, back_end.SHT30_RH), 2)
-        self.rh_in.append(rhData)
+        # read data from RH in and round to 2 digits        
+        self.rh_out = self.rh_out[-20:]
         self.rh_in = self.rh_in[-20:]
        
         # add time and Rh data to the plot
-        self.xs.append(dt.datetime.now().strftine('%S'))
+        self.xs.append(time.time()-self.start_time)
         self.xs = self.xs[-20:]
         
+        #clear the old data
         self.ax.clear()
-        self.ax.plot(self.ys, self.rh_in, 'r-', label='in')
-        self.ax.plot(self.ys, self.rh_out, 'b-', label='out')
 
-        self.plt.xticks(ha='right')
-        self.plt.subplots_adjust(bottom=0.30)
-        #self.plt.title('SHT30 Relative Humidity over Time')
-        #self.plt.ylabel('Relative Humidity (%)')
-        #self.plt.xlabel('Seconds from Code Begin (s)')
-
-        #self.line.set_ydata(self.A*np.sin(self.x+self.v*i))  # update the data
-        #return self.line
+        #plot the new data
+        self.ax.plot(self.xs, self.rh_in, 'r-', label='Pre-Cyld.')
+        self.ax.plot(self.xs, self.rh_out, 'b-', label='Post-Clyd.')
+        self.ax.legend()
+        self.ax.set_ylabel('Relative Humidity (%)')
+        self.ax.set_xlabel('Seconds from Code Begin (s)')
+        self.fig.subplots_adjust(bottom=0.30)
 
 '''
 @Description:
