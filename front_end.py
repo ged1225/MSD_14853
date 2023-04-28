@@ -137,7 +137,7 @@ class MainFrame(tk.Frame):
         self.record_button = tk.Button(self.button_frame, height=BUTTON_HEIGHT, font=('Times', BUTTON_FONT_SIZE),
                                 textvariable=self.record_button_tvar,  
                                 command= lambda: back_end.record_button(tvar=self.record_button_tvar, 
-                                                                    button=self.record_button))
+                                                                    frame=self))
 
         # Export button in button frame
         self.export_button_tvar = tk.StringVar(value=back_end.EXPORT_IDLE)
@@ -214,16 +214,25 @@ class MainFrame(tk.Frame):
     @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
     '''
     def animate(self,i):
-
+        # read SHT30 probes
         self.rh_data_out = round(back_end.get_sht30(back_end.SHT30_PROBE_0, back_end.SHT30_RH), 2)
         self.rh_data_in = round(back_end.get_sht30(back_end.SHT30_PROBE_1, back_end.SHT30_RH), 2)
         self.temp_data = round(back_end.get_sht30(back_end.SHT30_PROBE_0, back_end.SHT30_TC), 2)
+        
+        # set display numbers
         self.rh_data_var.set(str(self.rh_data_out) + back_end.RH_SUFFIX)
         self.temp_data_var.set(str(self.temp_data) + back_end.TEMP_SUFFIX)
        
+        # add data to graph data lists
         self.rh_out.append(self.rh_data_out)
         self.rh_in.append(self.rh_data_in)
 
+        # recording
+        if back_end.RECORDING_DATA:
+            with back_end.CSV_ROWS_LOCK:
+                back_end.CSV_ROWS.append([str(round((time.time()-self.start_time), 2)), #time
+                                          self.rh_data_out, #rh
+                                          self.temp_data]) #temp
 
         # read data from RH in and round to 2 digits        
         self.rh_out = self.rh_out[-20:]

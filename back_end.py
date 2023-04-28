@@ -6,6 +6,9 @@ from spidev import SpiDev
 import subprocess
 import csv
 import threading
+import re
+import os
+import datetime as dt
 
 # display strings
 RECORD_IDLE = "Record"
@@ -19,10 +22,10 @@ TEMP_SUFFIX = "°C"
 
 #export data stuff
 CSV_FIELDS = ['Time', 'RH', 'Temp. (C)']
+BASE_ADDR = '/media/ossila-chamber/'
 CSV_ROWS = [] # will be populated with lists of 3 (timestamp, rh, temp)
 CSV_ROWS_LOCK = threading.Lock()
 RECORDING_DATA = False
-RECORDING_THREAD = None
 
 #rh probe stuff
 SHT30_PROBE_0 = 1
@@ -65,23 +68,30 @@ class MCP3008:
 @Params:
 @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
 '''
-def export_button(tvar: tk.StringVar, button: tk.Button, frame):
+def export_button(tvar: tk.StringVar, button: tk.Button, frame: tk.Frame):
+    global CSV_ROWS
+    global CSV_ROWS_LOCK
+    
     if tvar.get() == EXPORT_IDLE:
         # set the button label to active
         tvar.set(EXPORT_ACTIVE)
+        
         # deactivate button
         button.configure(state=tk.DISABLED)
 
-        # print message --todo make LOG
-        print("Exporting...")
+        with CSV_ROWS_LOCK:
+            if not CSV_ROWS:
+                frame.update_messages("No data to export!")
+                return 0
+        if RECORDING_DATA:
+            frame.update_messages("Cannot export while recording!")
+            return 0
 
         # wait for 1 second -- todo add functionnality here
-        time.sleep(5)
         if usb_availiable():
-            export_thread = threading.Thread(target=record_thread)
-            export_thread.join()
+            write_csv(frame=frame)
         else:
-            frame.update_messages(message="Can't Export: Couldn't find a USB drive")
+            frame.update_messages(message="Cannot Export: Couldn't find a USB drive")
 
         # reset the button label
         tvar.set(EXPORT_IDLE)
@@ -89,11 +99,9 @@ def export_button(tvar: tk.StringVar, button: tk.Button, frame):
         # reactivate the button
         button.configure(state=tk.NORMAL)
 
-        # print message --todo make LOG
-        print("Export complete")
     else:
         # print message -- todo make LOG
-        print("Button error - pressed while active status")
+        frame.update_messages("Button error - pressed while active status")
 
 
 '''
@@ -134,35 +142,28 @@ def set_relay(mode: int):
 @Params:
 @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
 '''
-def record_button(tvar: tk.StringVar, button: tk.Button):
-    global RECORDING_THREAD
+def record_button(tvar: tk.StringVar, frame: tk.Frame):
+    global RECORDING_DATA
+    global CSV_ROWS
+    global CSV_ROWS_LOCK
+
     # recording is in progress
     if tvar.get() == RECORD_ACTIVE:
-        # tell the thread to break its loop
-        RECORDING_THREAD.do_run = False
-        # wait for the thread to exit
-        RECORDING_THREAD.join()
-        # set the global pointer to None
-        RECORDING_THREAD = None
-         # update the text on the record button to the idle message
-        tvar.set(RECORD_IDLE) # "Begin Recording"
-        # update the log
-        print("Record complete")
+        #stop recording
+        tvar.set(RECORD_IDLE)
+        with CSV_ROWS_LOCK:
+            frame.update_messages("Recording stopped, data recorded: " + str(CSV_ROWS))
+        RECORDING_DATA = False
     # recording is not in progress
+    elif tvar.get() == RECORD_IDLE:
+        tvar.set(RECORD_ACTIVE)
+        # check for usb port
+        frame.update_messages("Recording active.")
+        RECORDING_DATA = True
+    #error case
     else:
-        # ensure the global pointer isn't refrencing an active thread
-        if RECORDING_THREAD is not None:
-            #send error message to log
-            print("Recording is already in progress")
-            return -1
-        # set the global variable to a new recording thread instance
-        RECORDING_THREAD = threading.Thread(target=record_thread)
-        # start the new thread
-        RECORDING_THREAD.start()
-        # set the button text to the active message
-        tvar.set(RECORD_ACTIVE) # "Stop Recording"
-        # send message to the log
-        print("Recording...")
+        #start recording
+        frame.update_messages("Error in [back_end.py-record_button]: unrecognized button text.")
 
 
 '''
@@ -199,26 +200,6 @@ def get_sht30(probe, data_type):
         #todo -> error
         return -1
     return data
-
-
-'''
-@Description:
-@Params:
-@Author: Gabriel Dombrowski (ged1225@g.rit.edu)
-'''
-def toggle_pump(mode):
-    bus = smbus.SMBus(RELAY_BUS)
-    if mode is PUMP_ON:
-        print("turning relay #1 on")
-        bus.write_byte_data(RELAY_ADDR, 1, RELAY_ON)
-        #time.sleep(1)
-    elif mode is PUMP_OFF:
-        print("turning relay #1 off")
-        bus.write_byte_data(RELAY_ADDR, 1, RELAY_OFF)
-        #time.sleep(1)
-    else:
-        #todo raise error
-        return -1
 
 
 '''
@@ -272,8 +253,30 @@ def record_thread():
 @Params:
 @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
 '''
-def export_thread():
-    pass
+def write_csv(frame: tk.Frame):
+    global BASE_ADDR
+    global CSV_FIELDS
+    global CSV_ROWS
+
+    try:
+        usb_path = str(os.listdir(BASE_ADDR)[0]) + '/'
+    except IndexError:
+        frame.update_messages("USB connection unstable! No touchy!")
+        return 0
+
+    #print('usd drive list ' + str(usb_drive_name))
+
+    csv_name = dt.datetime.now().strftime('%m-%d-%Y_%H-%M-%S') + ".csv"
+
+    frame.update_messages("Attempting to export to " + csv_name + " in mount " + usb_path)
+
+    with open(("/media/ossila-chamber/"+ usb_path + csv_name), 'w', newline='') as file:
+        writer = csv.writer(file, dialect="excel")
+        writer.writerow(CSV_FIELDS)
+        for row in CSV_ROWS:
+            writer.writerow(row)
+
+    frame.update_messages("Export successful!")
 
 '''
 @Description:
@@ -281,4 +284,7 @@ def export_thread():
 @Author: Gabriel Dombrowski (ged1225@g.rit.edu)
 '''
 def usb_availiable():
-    return False
+    if os.path.exists('/dev/sda') and os.path.ismount('/mnt') == False:
+        return True
+    else:
+        return False
